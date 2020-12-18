@@ -1,0 +1,51 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+First chunk cleans the dataframe, creates subsets of the dataframe, and calculates league averages.
+
+```{r}
+moneyball <- read.csv("data/MoneyBallData 2013-2019.csv", as.is = TRUE)
+moneyball2 <- read.csv("data/Final Moneyball Dataset (1962-2012).csv", as.is = TRUE)
+moneyball2 <- moneyball2[-c(26:28)]
+names(moneyball2)[1] <- "franchID"
+names(moneyball2)[17] <- "Payroll.in_millions_of_dollars."
+fullmoneyball <- rbind(moneyball, moneyball2)
+fullmoneyball$Payroll <- gsub("[^0-9.-]", "", fullmoneyball$Payroll)
+fullmoneyball$Payroll.in_millions_of_dollars. <- gsub("[^0-9.-]", "", fullmoneyball$Payroll.in_millions_of_dollars.)
+fullmoneyball$Payroll <- as.numeric(fullmoneyball$Payroll)
+fullmoneyball$Payroll.in_millions_of_dollars. <- as.numeric(fullmoneyball$Payroll.in_millions_of_dollars.)
+moneyball1988 <- subset(fullmoneyball, Year >= 1988)
+moneyball1999 <- subset(fullmoneyball, Year >= 1999)
+lgavg_payroll <- aggregate(moneyball1988$Payroll, by=list(Year=moneyball1988$Year), FUN=mean)
+moneyballOAK <- subset(fullmoneyball, franchID == "OAK")
+moneyballNYY <- subset(fullmoneyball, franchID == "NYY")
+OAKNYY <- rbind(moneyballOAK, moneyballNYY)
+```
+
+```{r}
+library(ggplot2)
+sp1 <- ggplot(moneyball1988, aes(x=Payroll, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp2 <- ggplot(fullmoneyball, aes(x=OBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp3 <- ggplot(fullmoneyball, aes(x=SLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp4 <- ggplot(moneyball1999, aes(x=OOBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp5 <- ggplot(moneyball1999, aes(x=OSLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp1
+sp2
+sp3
+sp4
+sp5
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

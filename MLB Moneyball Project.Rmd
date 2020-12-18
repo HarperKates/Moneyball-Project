@@ -1,0 +1,133 @@
+---
+title: "R Notebook"
+Group Members: Jordan, Joe, Harper
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+First chunk cleans the dataframe, creates subsets of the dataframe, and calculates league averages.
+
+```{r}
+moneyball <- read.csv("data/MoneyBallData 2013-2019.csv", as.is = TRUE)
+moneyball2 <- read.csv("data/Final Moneyball Dataset (1962-2012).csv", as.is = TRUE)
+moneyball2 <- moneyball2[-c(26:28)]
+names(moneyball2)[1] <- "franchID"
+names(moneyball2)[17] <- "Payroll.in_millions_of_dollars."
+fullmoneyball <- rbind(moneyball, moneyball2)
+fullmoneyball$Payroll <- gsub("[^0-9.-]", "", fullmoneyball$Payroll)
+fullmoneyball$Payroll.in_millions_of_dollars. <- gsub("[^0-9.-]", "", fullmoneyball$Payroll.in_millions_of_dollars.)
+fullmoneyball$Payroll <- as.numeric(fullmoneyball$Payroll)
+fullmoneyball$Payroll.in_millions_of_dollars. <- as.numeric(fullmoneyball$Payroll.in_millions_of_dollars.)
+moneyball1988 <- subset(fullmoneyball, Year >= 1988)
+moneyball1999 <- subset(fullmoneyball, Year >= 1999)
+lgavg_payroll <- aggregate(moneyball1988$Payroll, by=list(Year=moneyball1988$Year), FUN=mean)
+moneyballOAK <- subset(fullmoneyball, franchID == "OAK")
+moneyballNYY <- subset(fullmoneyball, franchID == "NYY")
+OAKNYY <- rbind(moneyballOAK, moneyballNYY)
+```
+
+```{r}
+library(ggplot2)
+sp1 <- ggplot(moneyball1988, aes(x=Payroll, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp2 <- ggplot(fullmoneyball, aes(x=OBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp3 <- ggplot(fullmoneyball, aes(x=SLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp4 <- ggplot(moneyball1999, aes(x=OOBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp5 <- ggplot(moneyball1999, aes(x=OSLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+sp1
+sp2
+sp3
+sp4
+sp5
+```
+
+Map of Payroll
+```{r}
+library(maps)
+library(ggmap)
+library(dplyr)
+library(rvest)
+region <- c("arizona", "georgia", "maryland", "massachucets", "illinois", "illinois", "ohio", "ohio", "colorado", "michigan", "texas", "missouri", "california", "california", "florida", "wisconsin", "minnesota", "new york", "new york", "california", "pennsylvania", "pennsylvania", "california", "seattle", "california", "missouri", "florida", "texas", "toronto", "washington D.C")
+lat <- c("33.452", "33.746", "39.285", "42.346", "41.947", "41.511", "39.107", "41.495", "39.756", "42.346", "29.760", "39.102", "33.555", "34.222", "25.954", "43.042", "44.974", "40.755", "41.555", "37.666", "39.952", "40.461",  "32.752", "47.601", "37.779", "38.629", "27.768", "32.750", "43.641", "38.44")
+long <- c("-112.038", "-84.391", "-76.620", "-71.098", "-87.656", "-87.635", "-84.507", "-81.687", "-104.965", "-83.059", "-95.369", "-94.583", "-117.889", "-118.246", "-80.238", "-87.905", "-93.259", "-73.843", "-73.929", "-121.111", "-75.162", "-80.008", "-117.143", "-122.330", "-122.389", "-90.188", "-82.648", "-97.081", "-79.391", "-77.01")
+fullmoneyball$region <- rep_len(region, length.out = 1442)
+fullmoneyballregion <- fullmoneyball[-(31:1442), -26]
+MainStates <- map_data("state")
+mapfranchise <- data.frame(region, lat, long, fullmoneyballregion$franchID,  fullmoneyballregion$Payroll)
+mapfranchise %>% rename(franchID = fullmoneyballregion.franchID, Payroll = fullmoneyballregion.Payroll)
+
+MLBmap <- ggplot() + geom_polygon( data=MainStates, aes(x=long, y=lat, group=group),
+                color="black", fill="lightblue" ) + geom_point(data = mapfranchise, aes(x=as.numeric(long), y=as.numeric(lat), size = as.numeric(fullmoneyballregion.Payroll)), color = "orange") + scale_size(name = "Payroll")
+MLBmap
+subset <- fullmoneyball[c(1:240),]
+subset$lat <- rep(lat)
+subset$long <- rep(long)
+library(gganimate)
+library(gifski)
+library(ggrepel)
+AnimateMLBmap <- ggplot() + geom_polygon(data=MainStates, aes(x=long, y=lat, group=group),
+                color="black", fill="lightblue") + geom_point(data = subset, aes(x=as.numeric(long), y=as.numeric(lat), size = as.numeric(Payroll)), color = "orange") + scale_size(name = "Payroll") + labs(x = "Longitude", y = "Latitude") 
+AnimateMLBmap2 <- AnimateMLBmap + geom_text_repel(aes(x=as.numeric(mapfranchise$long), y=as.numeric(mapfranchise$lat), label=mapfranchise$fullmoneyballregion.franchID))
+AnimateMLBmap2
+AnimateMLBmap2 + transition_time(subset$Year) + labs(title = "Year: {frame_time}") + shadow_mark(alpha = .5, size = .8)
+AnimateMLBmap2
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(stringr)
+moneyball2$Payroll.in_millions_of_dollars. <- str_replace_all(moneyball2$Payroll.in_millions_of_dollars., "\\$", "")
+moneyball2$Payroll <- str_replace_all(moneyball2$Payroll, "\\$", "")
+moneyball$Payroll <- str_replace_all(moneyball$Payroll, "\\$", "")
+fullmoneyball$Payroll <- str_replace_all(fullmoneyball$Payroll, "\\$", "")
+fullmoneyball$Payroll <- gsub("[^0-9.-]", "", fullmoneyball$Payroll)
+moneyball$Payroll <- gsub("[^0-9.-]", "", moneyball$Payroll)
+moneyball2$Payroll <- gsub("[^0-9.-]", "", moneyball2$Payroll)
+ggplot(data=fullmoneyball, aes(x=OBP, y=W )) +      
+  geom_point(shape = 3, color = "black") +                                     
+  geom_smooth(method=lm,  color="green", se=FALSE) + facet_grid(. ~ Playoffs) +                 
+  labs(title="Relationship Between Wins and Teams OBP")
+ggplot(data=fullmoneyball, aes(x= OOBP, y=W )) +      
+  geom_point(shape = 3, color = "black") +                                     
+  geom_smooth(method=lm,  color="green", se=FALSE) + facet_grid(. ~ Playoffs) +                
+  labs(title="Relationship Between Wins and Teams OOBP")
+ggplot(data=fullmoneyball, aes(x=ERA, y=W )) +      
+  geom_point(shape = 3, color = "black") +                                 
+  geom_smooth(method=lm,  color="green", se=FALSE) +  facet_grid(. ~ Playoffs) +               
+  labs(title="Relationship Between Wins and Teams ERA")
+ggplot(data=fullmoneyball, aes(x=RA, y=W )) +      
+  geom_point(shape = 3, color = "black") +                                 
+  geom_smooth(method=lm,  color="green", se=FALSE) +  facet_grid(. ~ Playoffs) +               
+  labs(title="Relationship Between Wins and Teams Allowed Runs")
+ggplot(data=fullmoneyball, aes(x=OBP, y=RS, color= Year)) +      
+  geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") +
+  geom_smooth(method=lm,  color="black", se=FALSE) +               
+  labs(title="Higher Total OBP for a Team Leads to Scoring More Runs", x = "OBP", y= "Runs Scored")
+ggplot(data=fullmoneyball, aes(x=SLG, y=RS, color= Year)) +      
+  geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") + 
+  geom_smooth(method=lm,  color="black", se=FALSE) +               
+  labs(title="Higher Total SLG% for a Team Leads to Scoring More Runs", x = "SLG", y= "Runs Scored")
+ggplot(data=fullmoneyball, aes(x=OSLG, y=RA, color= Year)) +      
+  geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") +
+  geom_smooth(method=lm,  color="black", se=FALSE) +               
+  labs(title="Higher OSLG% Leads to the Other Team Scoring More Runs", x = "OSLG%", y= "Runs Allowed")
+ggplot(data=fullmoneyball, aes(x=OOBP, y=RA, color= Year)) +      
+  geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") +
+  geom_smooth(method=lm,  color="black", se=FALSE) +               
+  labs(title="The More Opposing Players Pitchers Allow on Base, The More Runs They Allow", x = "OOBP", y= "Runs Allowed")
+ggplot(data=moneyball, aes(x=OBP, y=W, color= Payroll.in_millions_of_dollars. )) +      
+  geom_point(shape = 3) +                                     
+  labs(title="Relationship Between Wins and Teams OBP")
+ggplot(data=moneyball, aes(x= Year, y=W, color= Payroll.in_millions_of_dollars. )) +      
+  geom_point(shape = 3) +                 
+  labs(title="Relationship Between Wins and Teams OBP")
+ggplot(data=moneyball, aes(x=Year, y=OBP, color= Playoffs )) +      
+  geom_point(shape = 1) +                                     
+  labs(title="Teams With Higher OBP Tend to Make the Playoffs")
+ggplot(data=moneyball, aes(x=Year, y=Payroll.in_millions_of_dollars., color= Playoffs )) +      
+  geom_point(shape = 1) +                                     
+  labs(title= "Payroll Does not Impact a Team's Playoff Chances", x = "Year", y= "Payroll(millions of $)")
+```

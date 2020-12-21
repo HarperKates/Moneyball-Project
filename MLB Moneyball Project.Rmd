@@ -11,31 +11,39 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 First chunk cleans the dataframe, creates subsets of the dataframe, and calculates league averages.
 
 ```{r}
+#These next two lines load the csv files.
 moneyball <- read.csv("data/MoneyBallData 2013-2019.csv", as.is = TRUE)
 moneyball2 <- read.csv("data/Final Moneyball Dataset (1962-2012).csv", as.is = TRUE)
+#Removes the last 3 columns of the moneyball2 dataframe
 moneyball2 <- moneyball2[-c(26:28)]
+#Renames two of the columns in the moneyball2 dataframe to match the moneyball dataframe
 names(moneyball2)[1] <- "franchID"
 names(moneyball2)[17] <- "Payroll.in_millions_of_dollars."
+#Creates a new dataframe called fullmoneyball that binds the moneyball and moneyball2 dataframes together
 fullmoneyball <- rbind(moneyball, moneyball2)
+#Removes any non-numeric characters from the payroll-based columns in the fullmoneyball dataframe
 fullmoneyball$Payroll <- gsub("[^0-9.-]", "", fullmoneyball$Payroll)
 fullmoneyball$Payroll.in_millions_of_dollars. <- gsub("[^0-9.-]", "", fullmoneyball$Payroll.in_millions_of_dollars.)
+#Converts the payroll-based columns in the fullmoneyball dataframe to numeric
 fullmoneyball$Payroll <- as.numeric(fullmoneyball$Payroll)
 fullmoneyball$Payroll.in_millions_of_dollars. <- as.numeric(fullmoneyball$Payroll.in_millions_of_dollars.)
+#Creates subset of the fullmoneyball dataframe that only includes the years 1988-2019
 moneyball1988 <- subset(fullmoneyball, Year >= 1988)
+#Creates subset of the fullmoneyball dataframe that only includes the years 1999-2019
 moneyball1999 <- subset(fullmoneyball, Year >= 1999)
-lgavg_payroll <- aggregate(moneyball1988$Payroll, by=list(Year=moneyball1988$Year), FUN=mean)
-moneyballOAK <- subset(fullmoneyball, franchID == "OAK")
-moneyballNYY <- subset(fullmoneyball, franchID == "NYY")
-OAKNYY <- rbind(moneyballOAK, moneyballNYY)
 ```
+This next chunk generates five scatterplots, each with wins as the response variable. The first plot has payroll as the explanatory variable, and the other four use each of the moneyball statistics (OBP, SLG, oOBP, oSLG). Each point on the scatterplot is colored on a gradient from blue to red, in which blue represents earlier years and red represents later years.
 
 ```{r}
+#Loads ggplot2 package
 library(ggplot2)
+#Creates each scatterplot
 sp1 <- ggplot(moneyball1988, aes(x=Payroll, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
 sp2 <- ggplot(fullmoneyball, aes(x=OBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
 sp3 <- ggplot(fullmoneyball, aes(x=SLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
 sp4 <- ggplot(moneyball1999, aes(x=OOBP, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
 sp5 <- ggplot(moneyball1999, aes(x=OSLG, y=W, color=Year)) + geom_point() + scale_color_gradient(low="blue", high="red")
+#Outputs each scatterplot
 sp1
 sp2
 sp3
@@ -45,47 +53,66 @@ sp5
 
 Map of Payroll
 ```{r}
+#Loads maps, ggmap, dplyr, and rvest packages
 library(maps)
 library(ggmap)
 library(dplyr)
 library(rvest)
+#Creates region vector that contains every state with an MLB team
 region <- c("arizona", "georgia", "maryland", "massachucets", "illinois", "illinois", "ohio", "ohio", "colorado", "michigan", "texas", "missouri", "california", "california", "florida", "wisconsin", "minnesota", "new york", "new york", "california", "pennsylvania", "pennsylvania", "california", "seattle", "california", "missouri", "florida", "texas", "toronto", "washington D.C")
+#Creates lat vector that contains the latitude of each MLB stadium
 lat <- c("33.452", "33.746", "39.285", "42.346", "41.947", "41.511", "39.107", "41.495", "39.756", "42.346", "29.760", "39.102", "33.555", "34.222", "25.954", "43.042", "44.974", "40.755", "41.555", "37.666", "39.952", "40.461",  "32.752", "47.601", "37.779", "38.629", "27.768", "32.750", "43.641", "38.44")
+#Creates long vector that contains the longitude of each MLB stadium
 long <- c("-112.038", "-84.391", "-76.620", "-71.098", "-87.656", "-87.635", "-84.507", "-81.687", "-104.965", "-83.059", "-95.369", "-94.583", "-117.889", "-118.246", "-80.238", "-87.905", "-93.259", "-73.843", "-73.929", "-121.111", "-75.162", "-80.008", "-117.143", "-122.330", "-122.389", "-90.188", "-82.648", "-97.081", "-79.391", "-77.01")
-fullmoneyball$region <- rep_len(region, length.out = 1442)
+#Subsets fullmoneyball into the first 30 lines
 fullmoneyballregion <- fullmoneyball[-(31:1442), -26]
+#Loads the US map
 MainStates <- map_data("state")
+#Creates a dataframe with region, lat, long, franchID, and Payroll as variables
 mapfranchise <- data.frame(region, lat, long, fullmoneyballregion$franchID,  fullmoneyballregion$Payroll)
+#Shortens the franchID and Payroll variable names
 mapfranchise %>% rename(franchID = fullmoneyballregion.franchID, Payroll = fullmoneyballregion.Payroll)
-
+#Fills in the map with the data points from the mapfranchise dataframe and uses Payroll as a scale for the size of each dot
 MLBmap <- ggplot() + geom_polygon( data=MainStates, aes(x=long, y=lat, group=group),
                 color="black", fill="lightblue" ) + geom_point(data = mapfranchise, aes(x=as.numeric(long), y=as.numeric(lat), size = as.numeric(fullmoneyballregion.Payroll)), color = "orange") + scale_size(name = "Payroll")
 MLBmap
+#Subsets fullmoneyball from 2012-2019
 subset <- fullmoneyball[c(1:240),]
+#Adds lat and long vectors to the subset and repeats them for each value
 subset$lat <- rep(lat)
 subset$long <- rep(long)
+#Loads the gganimate, gifski, and ggrepel packages
 library(gganimate)
 library(gifski)
 library(ggrepel)
+#Creates a map with the subset dataframe and uses Payroll as a scale for the size of each dot
 AnimateMLBmap <- ggplot() + geom_polygon(data=MainStates, aes(x=long, y=lat, group=group),
                 color="black", fill="lightblue") + geom_point(data = subset, aes(x=as.numeric(long), y=as.numeric(lat), size = as.numeric(Payroll)), color = "orange") + scale_size(name = "Payroll") + labs(x = "Longitude", y = "Latitude") 
+#Adds the franchise ID as a label for each data point
 AnimateMLBmap2 <- AnimateMLBmap + geom_text_repel(aes(x=as.numeric(mapfranchise$long), y=as.numeric(mapfranchise$lat), label=mapfranchise$fullmoneyballregion.franchID))
 AnimateMLBmap2
+#Shows the transformation from 2012-2019
 AnimateMLBmap2 + transition_time(subset$Year) + labs(title = "Year: {frame_time}") + shadow_mark(alpha = .5, size = .8)
 AnimateMLBmap2
 ```
 
+This chunk of code creates many different scatterplots comparing many different statistics with team success. However, we decided not to use many of the scatterplots, so most of them will not be shown on the website.
+
 ```{r}
+#Loads the ggplot2, dplyr, and stringr packages
 library(ggplot2)
 library(dplyr)
 library(stringr)
+#For lines 105-108, uses str_replace_all function to remove dollar signs from each payroll column in each of the 3 dataframes
 moneyball2$Payroll.in_millions_of_dollars. <- str_replace_all(moneyball2$Payroll.in_millions_of_dollars., "\\$", "")
 moneyball2$Payroll <- str_replace_all(moneyball2$Payroll, "\\$", "")
 moneyball$Payroll <- str_replace_all(moneyball$Payroll, "\\$", "")
 fullmoneyball$Payroll <- str_replace_all(fullmoneyball$Payroll, "\\$", "")
+#For lines 110-112, uses gsub function to remove commas from each payroll column in each of the 3 dataframes
 fullmoneyball$Payroll <- gsub("[^0-9.-]", "", fullmoneyball$Payroll)
 moneyball$Payroll <- gsub("[^0-9.-]", "", moneyball$Payroll)
 moneyball2$Payroll <- gsub("[^0-9.-]", "", moneyball2$Payroll)
+#We decided not to use any of the scatterplots from lines 116-131.
 ggplot(data=fullmoneyball, aes(x=OBP, y=W )) +      
   geom_point(shape = 3, color = "black") +                                     
   geom_smooth(method=lm,  color="green", se=FALSE) + facet_grid(. ~ Playoffs) +                 
@@ -102,6 +129,7 @@ ggplot(data=fullmoneyball, aes(x=RA, y=W )) +
   geom_point(shape = 3, color = "black") +                                 
   geom_smooth(method=lm,  color="green", se=FALSE) +  facet_grid(. ~ Playoffs) +               
   labs(title="Relationship Between Wins and Teams Allowed Runs")
+#We are showing each of the scatterplots below.
 ggplot(data=fullmoneyball, aes(x=OBP, y=RS, color= Year)) +      
   geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") +
   geom_smooth(method=lm,  color="black", se=FALSE) +               
@@ -118,12 +146,14 @@ ggplot(data=fullmoneyball, aes(x=OOBP, y=RA, color= Year)) +
   geom_point(shape = 1, alpha= 0.8) + scale_color_gradient(low="blue", high="red") +
   geom_smooth(method=lm,  color="black", se=FALSE) +               
   labs(title="The More Opposing Players Pitchers Allow on Base, The More Runs They Allow", x = "OOBP", y= "Runs Allowed")
+#We decided not to use any of the scatterplots from lines 150-155.
 ggplot(data=moneyball, aes(x=OBP, y=W, color= Payroll.in_millions_of_dollars. )) +      
   geom_point(shape = 3) +                                     
   labs(title="Relationship Between Wins and Teams OBP")
 ggplot(data=moneyball, aes(x= Year, y=W, color= Payroll.in_millions_of_dollars. )) +      
   geom_point(shape = 3) +                 
   labs(title="Relationship Between Wins and Teams OBP")
+#We are showing each of the scatterplots below.
 ggplot(data=moneyball, aes(x=Year, y=OBP, color= Playoffs )) +      
   geom_point(shape = 1) +                                     
   labs(title="Teams With Higher OBP Tend to Make the Playoffs")

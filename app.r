@@ -1,3 +1,6 @@
+Group Members: Jordan Magnani, Joe Sarnello, Harper Kates
+Date: 12/22/20
+
 library(shiny)
 library(ggplot2)
 
